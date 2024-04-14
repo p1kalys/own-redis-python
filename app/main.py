@@ -1,8 +1,14 @@
 # Uncomment this to pass the first stage
 import socket
 import threading
+import time
+from dataclasses import dataclass
 
-DB = {}
+@dataclass
+class Record:
+    data: str = None
+    expiry: int = None
+
 
 def read_from_parts(msg):
     str_msg = msg.decode()
@@ -23,7 +29,7 @@ def read_from_parts(msg):
     msg_args = parsed_msg[1:]
     return cmd, msg_args
 
-def handle_client(client):
+def handle_client(client, DB):
     while True:
         data = client.recv(1024)
         
@@ -37,9 +43,9 @@ def handle_client(client):
         elif command == "echo":
             echo(client, args_data)
         elif command == "get":
-            get(client, args_data)
+            get(client, args_data, DB)
         elif command == "set":
-            set(client, args_data)
+            set(client, args_data, DB)
         else:
             print("Command not supported!")
     
@@ -55,23 +61,45 @@ def echo(client, args) -> None:
     resp = msg.encode()
     client.sendall(resp)
 
-def set(client, args) -> None:
+def set(client, args, DB) -> None:
     key = args[0]
     val = args[1]
+    new_record = Record()
+    
+    if len(args) > 2:
+        opt_args = [opt.lower() for opt in args]
+        if "px" in opt_args:
+            expiry = int(args[3])
+            now_ms = int(round(time.time() * 1000))
+            new_record.expiry = now_ms + expiry
     try:
-        DB[key] = val
+        new_record.data = val
+        DB[key] = new_record
     except:
         print("DB insert failed")
     resp = b"+OK\r\n"
     client.sendall(resp)
 
-def get(client, args) -> None:
+def get(client, args, DB) -> None:
     key = args[0]
+    now = int(round(time.time() * 1000))
+
     try:
         val = DB[key]
+        print(f"found {key}: {val}")
+
     except:
-        print(f"No value at key: {key}")
-    msg = f"+{val}\r\n"
+        resp = b"$-1\r\n"
+        client.sendall(resp)
+        return
+    if val.expiry is not None and val.expiry < now:
+        DB.pop(key)
+        print("Message is expired")
+        resp = b"$-1\r\n"
+        client.sendall(resp)
+        return
+
+    msg = f"+{val.data}\r\n"
     resp = msg.encode()
     client.sendall(resp)
 
@@ -80,11 +108,12 @@ def main():
     print("Logs from your program will appear here!")
 
     server_socket = socket.create_server(("localhost", 6379), reuse_port=True)
-    
+    DB: dict[str, Record] = {}
+
     while True:
         client_socket, addr = server_socket.accept()
         print('Connection from', addr)
-        client_thread = threading.Thread(target=handle_client, args=(client_socket,))
+        client_thread = threading.Thread(target=handle_client, args=(client_socket,DB,))
         client_thread.start()
 
 
