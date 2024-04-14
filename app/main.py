@@ -34,11 +34,11 @@ def handle_client(client):
         
         if command == "ping":
             ping(client, args_data)
-        elif cmd == "echo":
+        elif command == "echo":
             echo(client, args_data)
-        elif cmd == "get":
+        elif command == "get":
             get(client, args_data)
-        elif cmd == "set":
+        elif command == "set":
             set(client, args_data)
         else:
             print("Command not supported!")
