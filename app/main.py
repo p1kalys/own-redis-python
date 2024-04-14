@@ -30,8 +30,7 @@ def handle_client(client):
         if not data:
             break
         
-        data_parts = iter(data.decode().split("\r\n"))
-        command, args_data = read_from_parts(data_parts)
+        command, args_data = read_from_parts(data)
         
         if command == "ping":
             ping(client, args_data)
