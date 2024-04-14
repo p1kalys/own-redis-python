@@ -2,12 +2,39 @@
 import socket
 import threading
 
+def read_from_parts(parts):
+    stack = []
+    while part := next(parts):
+        if part[0] == "*":
+            length = int(part[1::])
+            arr = []
+            for i in range(length):
+                middle = read_from_parts(parts)
+                arr.append(middle)
+            return arr
+        elif part[0] == "$":
+            length = int(part[1::])
+            if length == 1:
+                return None
+            part_string = next(parts)
+            return part_string
+        else:
+            return Exception("Invalid protocol")
+
 def handle_client(client):
     while True:
         data = client.recv(1024)
         if not data:
             break
-        client.sendall(b"+PONG\r\n")
+        data_parts = iter(data.decode().split("\r\n"))
+        commands = read_from_parts(data_parts)
+        if commands[0].lower() == "ping":
+            response_data = b"+PONG\r\n"
+            client.sendall(response_data)
+        elif commands[0].lower() == "echo" and len(commands) > 1:
+            response_data = f"+{commands[1]}\r\n".encode()
+            client.sendall(response_data)
+    
     client.close()
 
 def main():
