@@ -8,7 +8,7 @@ def handle_client(client):
         if not data:
             break
         client.sendall(b"+PONG\r\n")
-        client.close()
+    client.close()
 
 def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
