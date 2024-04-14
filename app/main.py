@@ -19,7 +19,7 @@ def main():
     while True:
         client_socket, addr = server_socket.accept()
         print('Connection from', addr)
-        client_thread = threading.Thread(target=handle_client, args=(client_socket))
+        client_thread = threading.Thread(target=handle_client, args=(client_socket,))
         client_thread.start()
 
 
